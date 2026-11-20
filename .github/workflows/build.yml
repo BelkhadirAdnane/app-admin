@@ -1,0 +1,36 @@
+name: Build supervision
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Install · Typecheck · Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build (client + serveur)
+        run: npm run build
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: supervision-build
+          path: dist
+          retention-days: 7
