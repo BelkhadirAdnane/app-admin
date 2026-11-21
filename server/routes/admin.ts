@@ -1,6 +1,5 @@
 import {
   createHmac,
-  scryptSync,
   timingSafeEqual,
   createHash,
   randomUUID,
@@ -9,9 +8,18 @@ import { Request, RequestHandler } from "express";
 import { z } from "zod";
 import { LIEUX_REFERENTIEL } from "../referentiel";
 
+// --- Identifiants codés en dur pour le prototype -------------------------
+// ATTENTION : aucune sécurité réelle ici. À remplacer avant toute mise en
+// production (retour au flux par variables d'env + hash scrypt).
+const HARD_CODED_NOM = "Alami";
+const HARD_CODED_PRENOM = "Adnane";
+const HARD_CODED_PIN = "123456";
+const HARD_CODED_SESSION_SECRET =
+  "prototype-session-secret-ne-pas-utiliser-en-production-32chars";
+// ---------------------------------------------------------------------------
+
 const SESSION_COOKIE = "admin_session";
 const SESSION_TTL_SECONDS = 8 * 60 * 60;
-const PIN_HASH_PATTERN = /^([a-f\d]{32}):([a-f\d]{128})$/i;
 const attemptsByIp = new Map<string, { count: number; expiresAt: number }>();
 
 /** Fichiers générés conservés en mémoire quand aucun bucket n'est configuré. */
@@ -50,8 +58,7 @@ function readCookie(request: Request, name: string) {
 }
 
 function createSession() {
-  const secret = process.env.ADMIN_SESSION_SECRET;
-  if (!secret || secret.length < 32) return null;
+  const secret = HARD_CODED_SESSION_SECRET;
 
   const payload = Buffer.from(
     JSON.stringify({ expiresAt: Date.now() + SESSION_TTL_SECONDS * 1000 }),
@@ -62,8 +69,8 @@ function createSession() {
 
 function hasValidSession(request: Request) {
   const token = readCookie(request, SESSION_COOKIE);
-  const secret = process.env.ADMIN_SESSION_SECRET;
-  if (!token || !secret || secret.length < 32) return false;
+  const secret = HARD_CODED_SESSION_SECRET;
+  if (!token) return false;
 
   const [payload, signature, extra] = token.split(".");
   if (!payload || !signature || extra) return false;
@@ -116,29 +123,11 @@ function setSessionCookie(token: string, request: Request) {
 }
 
 function isLoginConfigured() {
-  return Boolean(
-    process.env.ADMIN_NOM?.trim() &&
-      process.env.ADMIN_PRENOM?.trim() &&
-      process.env.ADMIN_PIN_HASH &&
-      PIN_HASH_PATTERN.test(process.env.ADMIN_PIN_HASH) &&
-      process.env.ADMIN_SESSION_SECRET &&
-      process.env.ADMIN_SESSION_SECRET.length >= 32,
-  );
+  return true; // identifiants codés en dur : toujours "configuré"
 }
 
 function isPinValid(pin: string) {
-  const hash = process.env.ADMIN_PIN_HASH;
-  if (!hash) return false;
-  const match = PIN_HASH_PATTERN.exec(hash);
-  if (!match) return false;
-
-  const expected = Buffer.from(match[2], "hex");
-  const actual = scryptSync(pin, match[1], expected.length, {
-    N: 16384,
-    r: 8,
-    p: 1,
-  });
-  return timingSafeEqual(actual, expected);
+  return safeEqual(pin, HARD_CODED_PIN);
 }
 
 function loginAttempts(ip: string) {
@@ -179,8 +168,8 @@ export const handleAdminLogin: RequestHandler = (request, response) => {
 
   const credentials = result.data;
   const invalidFields = {
-    nom: !safeEqual(normalizeCredential(credentials.nom), normalizeCredential(process.env.ADMIN_NOM!)),
-    prenom: !safeEqual(normalizeCredential(credentials.prenom), normalizeCredential(process.env.ADMIN_PRENOM!)),
+    nom: !safeEqual(normalizeCredential(credentials.nom), normalizeCredential(HARD_CODED_NOM)),
+    prenom: !safeEqual(normalizeCredential(credentials.prenom), normalizeCredential(HARD_CODED_PRENOM)),
     pin: !isPinValid(credentials.pin),
   };
 
