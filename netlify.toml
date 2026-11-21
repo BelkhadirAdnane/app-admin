@@ -6,7 +6,12 @@ publish = "dist/spa"
 
 [functions]
 node_bundler = "esbuild"
-included_files = ["node_modules/exceljs/**", "node_modules/chartsheet/**"]
+external_node_modules = ["exceljs", "chartsheet", "web-push"]
+included_files = [
+  "node_modules/exceljs/**",
+  "node_modules/chartsheet/**",
+  "node_modules/web-push/**"
+]
 [[redirects]]
 force = true
 from = "/api/*"

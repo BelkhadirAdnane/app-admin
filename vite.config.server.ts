@@ -32,6 +32,9 @@ export default defineConfig({
         // External dependencies that should not be bundled
         "express",
         "cors",
+        "exceljs",
+        "chartsheet",
+        "web-push",
       ],
       output: {
         format: "es",
